@@ -10,5 +10,37 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  ingestion-service:
+    build:
+      context: .
+      dockerfile: src/IngestionService/Dockerfile
+    ports:
+      - "5001:8080"
+    depends_on:
+      - postgres
+    environment:
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=sensordb;Username=snus;Password=snus
+      ASPNETCORE_URLS: http://+:8080
+
+  consensus-service:
+    build:
+      context: .
+      dockerfile: src/ConsensusService/Dockerfile
+    depends_on:
+      - postgres
+    environment:
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=sensordb;Username=snus;Password=snus
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: src/NotificationService/Dockerfile
+    ports:
+      - "5003:8080"
+    depends_on:
+      - postgres
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+
 volumes:
   pgdata:
