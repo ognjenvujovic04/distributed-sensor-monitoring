@@ -33,6 +33,27 @@ dotnet build
 dotnet run --project src/IngestionService
 ```
 
+## Database
+
+Start PostgreSQL with Docker Compose:
+
+```bash
+docker compose up -d postgres
+```
+
+Verify the container is running:
+
+```bash
+docker compose ps
+```
+
+### Connection strings
+
+| Context | Connection string |
+|---------|-------------------|
+| Local dev (`dotnet run`) | `Host=localhost;Port=5432;Database=sensordb;Username=snus;Password=snus` |
+| Inside Docker Compose network | `Host=postgres;Port=5432;Database=sensordb;Username=snus;Password=snus` |
+
 ## Docker
 
 ```bash
