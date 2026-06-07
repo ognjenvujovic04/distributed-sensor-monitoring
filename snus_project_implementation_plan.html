@@ -1,0 +1,111 @@
+
+<style>
+  :root { --s1: #E1F5EE; --s1t: #085041; --s1b: #0F6E56; --s2: #EEEDFE; --s2t: #26215C; --s2b: #534AB7; --s3: #FAEEDA; --s3t: #412402; --s3b: #854F0B; --sh: #F1EFE8; --sht: #2C2C2A; --shb: #5F5E5A; }
+  @media (prefers-color-scheme: dark) {
+    :root { --s1: #085041; --s1t: #9FE1CB; --s1b: #5DCAA5; --s2: #3C3489; --s2t: #CECBF6; --s2b: #AFA9EC; --s3: #633806; --s3t: #FAC775; --s3b: #EF9F27; --sh: #444441; --sht: #D3D1C7; --shb: #888780; }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans, sans-serif); color: var(--color-text-primary); }
+  .plan { padding: 1rem 0; }
+  .phase { margin-bottom: 1.5rem; border: 0.5px solid var(--color-border-tertiary); border-radius: 12px; overflow: hidden; }
+  .phase-header { padding: 10px 16px; display: flex; align-items: center; gap: 10px; background: var(--color-background-secondary); border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .phase-num { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); }
+  .phase-title { font-size: 15px; font-weight: 500; flex: 1; }
+  .phase-tag { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; }
+  .tasks { padding: 0; }
+  .task { padding: 10px 16px; border-bottom: 0.5px solid var(--color-border-tertiary); display: grid; grid-template-columns: 28px 1fr auto; gap: 8px; align-items: start; }
+  .task:last-child { border-bottom: none; }
+  .task-num { font-size: 12px; color: var(--color-text-tertiary); padding-top: 1px; font-weight: 500; }
+  .task-body { }
+  .task-title { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+  .task-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; }
+  .owner { font-size: 11px; font-weight: 500; padding: 2px 9px; border-radius: 20px; white-space: nowrap; align-self: start; margin-top: 2px; }
+  .s1 { background: var(--s1); color: var(--s1t); }
+  .s1b-tag { background: var(--s1); color: var(--s1t); }
+  .s2 { background: var(--s2); color: var(--s2t); }
+  .s2b-tag { background: var(--s2); color: var(--s2t); }
+  .s3 { background: var(--s3); color: var(--s3t); }
+  .s3b-tag { background: var(--s3); color: var(--s3t); }
+  .shared { background: var(--sh); color: var(--sht); }
+  .legend { display: flex; gap: 10px; flex-wrap: wrap; padding: 0 0 1rem 0; }
+  .leg { font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 500; }
+  .divider { font-size: 11px; font-weight: 500; color: var(--color-text-tertiary); padding: 6px 16px 4px; text-transform: uppercase; letter-spacing: 0.04em; background: var(--color-background-tertiary); border-bottom: 0.5px solid var(--color-border-tertiary); }
+</style>
+<div class="plan">
+  <div class="legend">
+    <span class="leg s1">Student 1 — Infrastructure & Sensors</span>
+    <span class="leg s2">Student 2 — Core Services & Consensus</span>
+    <span class="leg s3">Student 3 — Security & Comms</span>
+    <span class="leg shared">Shared</span>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num">Phase 1</span>
+      <span class="phase-title">Project setup & architecture</span>
+      <span class="phase-tag shared">Week 1</span>
+    </div>
+    <div class="tasks">
+      <div class="task"><span class="task-num">1</span><div class="task-body"><div class="task-title">Repository & project structure</div><div class="task-desc">Create GitHub repo, set up .NET solution with all microservice project stubs, add .gitignore and README skeleton.</div></div><span class="owner shared">All 3</span></div>
+      <div class="task"><span class="task-num">2</span><div class="task-body"><div class="task-title">Docker & docker-compose baseline</div><div class="task-desc">Write docker-compose.yml with service stubs (IngestionService, ConsensusService, NotificationService, PostgreSQL). All services should build and start, even if empty.</div></div><span class="owner s1">Student 1</span></div>
+      <div class="task"><span class="task-num">3</span><div class="task-body"><div class="task-title">Database schema & Entity Framework setup</div><div class="task-desc">Define models: SensorReading, Sensor, ConsensusValue, AlarmEvent. Configure DbContext, add migrations, seed initial 5+ sensor records.</div></div><span class="owner s2">Student 2</span></div>
+      <div class="task"><span class="task-num">4</span><div class="task-body"><div class="task-title">Shared DTOs & contracts</div><div class="task-desc">Define shared request/response DTOs (SensorMessage, AlarmPayload) used across all services. Put in a shared class library.</div></div><span class="owner s3">Student 3</span></div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num">Phase 2</span>
+      <span class="phase-title">Sensor simulation & fault tolerance</span>
+      <span class="phase-tag s1b-tag">Student 1 lead</span>
+    </div>
+    <div class="tasks">
+      <div class="task"><span class="task-num">5</span><div class="task-body"><div class="task-title">Sensor client application</div><div class="task-desc">Build the sensor simulator: assigns unique ID, temperature range, data quality flag, alarm thresholds. Generates random values every 1–10 seconds and sends to server.</div></div><span class="owner s1">Student 1</span></div>
+      <div class="task"><span class="task-num">6</span><div class="task-body"><div class="task-title">Alarm logic (sensor side)</div><div class="task-desc">Implement threshold crossing detection. Priority 3 suppresses 1 & 2. Color-coded console output (yellow/orange/red). Sends alarm message to server on trigger.</div></div><span class="owner s1">Student 1</span></div>
+      <div class="task"><span class="task-num">7</span><div class="task-body"><div class="task-title">Fault tolerance — sensor pool management</div><div class="task-desc">Server tracks last message timestamp per sensor. Marks inactive after 10s. Promotes a standby sensor to maintain exactly 5 active. Implements the 30s manual block for testing.</div></div><span class="owner s1">Student 1</span></div>
+      <div class="task"><span class="task-num">8</span><div class="task-body"><div class="task-title">IngestionService — receive & persist</div><div class="task-desc">REST endpoint that accepts sensor messages, validates them, writes raw readings to DB. Must be fast — keep logic thin, delegate to downstream services.</div></div><span class="owner s1">Student 1</span></div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num">Phase 3</span>
+      <span class="phase-title">Consensus service & notifications</span>
+      <span class="phase-tag s2b-tag">Student 2 lead</span>
+    </div>
+    <div class="tasks">
+      <div class="task"><span class="task-num">9</span><div class="task-body"><div class="task-title">BFT research & simplified algorithm</div><div class="task-desc">Research BFT approaches (PBFT, Tendermint-style, or median-based). Document the chosen approach. Implement a simplified version that detects statistical outliers and marks sensors as malicious (quality → BAD).</div></div><span class="owner s2">Student 2</span></div>
+      <div class="task"><span class="task-num">10</span><div class="task-body"><div class="task-title">ConsensusService worker</div><div class="task-desc">Background worker that runs every 60s. Reads last minute's GOOD-quality readings, calculates consensus value, writes to ConsensusValue table with flag. Uses CQRS pattern — reads via query handler, writes via command handler.</div></div><span class="owner s2">Student 2</span></div>
+      <div class="task"><span class="task-num">11</span><div class="task-body"><div class="task-title">NotificationService & SignalR hub</div><div class="task-desc">Receives alarm events from IngestionService. Broadcasts to connected clients via SignalR with sensor ID, value, and alarm color. Prints to server console with correct color.</div></div><span class="owner s2">Student 2</span></div>
+      <div class="task"><span class="task-num">12</span><div class="task-body"><div class="task-title">Ingress / API gateway</div><div class="task-desc">Configure reverse proxy routing: /api/ingest → IngestionService, /api/reports → ReportingService, /hub → NotificationService. Can use YARP or Nginx in docker-compose.</div></div><span class="owner s2">Student 2</span></div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num">Phase 4</span>
+      <span class="phase-title">Security & reliable communication</span>
+      <span class="phase-tag s3b-tag">Student 3 lead</span>
+    </div>
+    <div class="tasks">
+      <div class="task"><span class="task-num">13</span><div class="task-body"><div class="task-title">AES encryption + RSA/ECDSA signing</div><div class="task-desc">Implement message encryption (AES-256-CBC or GCM) and digital signature (RSA or ECDSA). Each sensor has a key pair. Server verifies signature before processing. Write as a reusable middleware/service.</div></div><span class="owner s3">Student 3</span></div>
+      <div class="task"><span class="task-num">14</span><div class="task-body"><div class="task-title">Replay attack protection</div><div class="task-desc">Add timestamp + incrementing message ID to every sensor message. Server rejects messages with timestamp older than a threshold or with a previously seen message ID (use in-memory cache or DB check).</div></div><span class="owner s3">Student 3</span></div>
+      <div class="task"><span class="task-num">15</span><div class="task-body"><div class="task-title">DoS / rate limiting</div><div class="task-desc">Integrate AspNetCoreRateLimit. Configure per-sensor-ID limit of 10 req/s. Temporarily block violating sensors. Test with a fast-sending sensor simulator.</div></div><span class="owner s3">Student 3</span></div>
+      <div class="task"><span class="task-num">16</span><div class="task-body"><div class="task-title">Real network setup & security analysis</div><div class="task-desc">Configure services to bind to real network addresses (not localhost). Document security risks (MITM, sniffing, exposure) and mitigations (TLS, firewall rules, key management). This becomes part of the repo's security documentation.</div></div><span class="owner s3">Student 3</span></div>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase-header">
+      <span class="phase-num">Phase 5</span>
+      <span class="phase-title">Kubernetes & integration</span>
+      <span class="phase-tag shared">All 3 — Week final</span>
+    </div>
+    <div class="tasks">
+      <div class="task"><span class="task-num">17</span><div class="task-body"><div class="task-title">Kubernetes manifests (Minikube)</div><div class="task-desc">Write Deployment, Service, ConfigMap, and Secret YAML for each microservice. Configure persistent volume for PostgreSQL. Student 1 leads, others review.</div></div><span class="owner s1">Student 1</span></div>
+      <div class="task"><span class="task-num">18</span><div class="task-body"><div class="task-title">Integration testing & end-to-end run</div><div class="task-desc">Run the full system with 5+ sensor clients, verify fault tolerance triggers, alarm flow, consensus output, and security layer all work together. Fix integration issues as a team.</div></div><span class="owner shared">All 3</span></div>
+      <div class="task"><span class="task-num">19</span><div class="task-body"><div class="task-title">Two-machine defense demo setup</div><div class="task-desc">Configure and test running servers on one machine and sensor clients on another. Document the exact steps. Student 3 leads (owns the network config).</div></div><span class="owner s3">Student 3</span></div>
+      <div class="task"><span class="task-num">20</span><div class="task-body"><div class="task-title">README, screenshots & final repo polish</div><div class="task-desc">Complete setup/run instructions, add screenshots of running system (alarms, consensus, SignalR notifications), finalize security documentation. Each student writes their own section.</div></div><span class="owner shared">All 3</span></div>
+    </div>
+  </div>
+</div>
