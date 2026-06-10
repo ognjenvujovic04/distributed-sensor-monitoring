@@ -3,6 +3,7 @@ WORKDIR /src
 
 COPY distributed-sensor-monitoring.sln .
 COPY src/SensorMonitoring.Contracts/SensorMonitoring.Contracts.csproj src/SensorMonitoring.Contracts/
+COPY src/SensorMonitoring.Data/SensorMonitoring.Data.csproj src/SensorMonitoring.Data/
 COPY src/ConsensusService/ConsensusService.csproj src/ConsensusService/
 
 RUN dotnet restore src/ConsensusService/ConsensusService.csproj
