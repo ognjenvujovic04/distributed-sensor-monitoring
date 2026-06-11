@@ -11,7 +11,7 @@ This project implements a fault-tolerant sensor data ingestion pipeline with con
 | ------------------------------ | ------------------------------------------------------------------ |
 | **IngestionService**           | Receives sensor readings via REST API, fault-tolerance pool worker |
 | **SensorSimulator**            | Console client that simulates sensor readings and client-side alarms |
-| **ConsensusService**           | Background worker for consensus value calculation (Phase 3+)       |
+| **ConsensusService**           | Background worker: per-minute consensus calculation and malicious-sensor (BFT) detection |
 | **NotificationService**        | Real-time alarm and status notifications (SignalR in Phase 3+)     |
 | **SensorMonitoring.Contracts** | Shared DTOs and enums (`SensorMessage`, `AlarmPayload`, etc.)      |
 | **SensorMonitoring.Data**      | EF Core entities, DbContext, and migrations                        |
@@ -179,6 +179,58 @@ Failover test: stop one simulator, wait ~12 seconds, then start a standby:
 
 ```bash
 dotnet run --project src/SensorSimulator -- --sensor-id SENSOR-006
+```
+
+## Phase 3: Consensus & BFT
+
+Phase 3 adds the **ConsensusService** worker: once per minute it reads the previous minute's `GOOD`-quality readings, detects malicious sensors (statistical outliers), marks them `BAD` (`Sensor.DataQuality`), and writes a consensus value to the `ConsensusValues` table.
+
+### Migration required
+
+This phase adds `SensorCount` / `SampleCount` columns and a unique index to `ConsensusValues`. Apply the latest migrations before running:
+
+```bash
+dotnet ef database update --project src/SensorMonitoring.Data --startup-project src/IngestionService
+```
+
+### Running
+
+Start PostgreSQL and IngestionService (see Phase 2), run at least 3 sensor simulators, then start the worker:
+
+```bash
+dotnet run --project src/ConsensusService
+```
+
+The worker uses the connection string in `src/ConsensusService/appsettings.json` (local dev) or the `ConnectionStrings__Default` env var (Docker). In Docker it runs automatically as the `consensus-service` container. It logs one line per completed minute, e.g.:
+
+```
+Consensus 19.84°C for [12:04-12:05) from 5 sensors / 41 samples
+```
+
+### Configuration
+
+Outlier-detection thresholds are in the `Consensus` section of `src/ConsensusService/appsettings.json`:
+
+| Setting | Default | Meaning |
+| ------- | ------- | ------- |
+| `MinAbsoluteDeviation` | `10.0` | Min deviation (°C) from the population median to consider a sensor an outlier |
+| `MadZScoreThreshold` | `2.5` | Modified z-score (MAD-based) above which a sensor is flagged malicious |
+| `MinSensorsForDetection` | `3` | Minimum reporting sensors before detection runs (below this, consensus is still computed) |
+| `GraceSeconds` | `5` | Delay after each minute boundary before processing, to tolerate late readings |
+
+### Testing malicious-sensor detection
+
+Run a simulator with the `--malicious` flag — it sends pinned near-maximum values (a clean outlier):
+
+```bash
+dotnet run --project src/SensorSimulator -- --sensor-id SENSOR-005 --malicious
+```
+
+Within 1–2 cycles the worker logs `Outliers detected: SENSOR-005` and `marked MALICIOUS`; that sensor's `DataQuality` becomes `BAD` and it is dropped from consensus. The mark is **permanent** — reset it to re-run the demo:
+
+```bash
+# PowerShell (pipe SQL via stdin so quoted identifiers survive)
+'UPDATE "Sensors" SET "DataQuality"=''Good'' WHERE "Id"=''SENSOR-005'';' | docker exec -i git-postgres-1 psql -U snus -d sensordb
 ```
 
 ## Database
