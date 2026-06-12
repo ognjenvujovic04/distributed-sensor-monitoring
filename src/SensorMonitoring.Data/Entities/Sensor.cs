@@ -27,4 +27,5 @@ public class Sensor
     public ICollection<SensorReading> Readings { get; set; } = [];
 
     public ICollection<AlarmEvent> AlarmEvents { get; set; } = [];
+    public long LastMessageId { get; set; }
 }
