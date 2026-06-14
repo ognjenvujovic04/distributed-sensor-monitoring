@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using SensorMonitoring.Contracts;
+using SensorMonitoring.Security;
 
 namespace SensorSimulator;
 
@@ -7,14 +8,21 @@ public sealed class SensorClient
 {
     private readonly HttpClient _httpClient;
     private readonly SensorMetadata _sensor;
-    private readonly bool _malicious;
-    private long _messageId = 1;
+    private readonly ISensorMessageProtector _protector;
+    private readonly SimulatorModes _modes;
+    private long _messageId = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-    public SensorClient(HttpClient httpClient, SensorMetadata sensor, bool malicious = false)
+    public SensorClient(
+        HttpClient httpClient,
+        SensorMetadata sensor,
+        ISensorMessageProtector protector,
+        SimulatorModes modes)
     {
         _httpClient = httpClient;
         _sensor = sensor;
-        _malicious = malicious;
+        _protector = protector;
+        _modes = modes;
+        _httpClient.DefaultRequestHeaders.Add("X-Sensor-Id", sensor.Id);
     }
 
     public async Task SendReadingAsync(CancellationToken cancellationToken)
@@ -34,36 +42,74 @@ public sealed class SensorClient
             _sensor.DataQuality,
             alarmPriority == AlarmPriority.None ? null : alarmPriority);
 
+        var envelope = _protector.Protect(message);
+
+        if (_modes.BadSignature)
+        {
+            envelope = CorruptSignature(envelope);
+        }
+
+        await PostEnvelopeAsync(envelope, message, temperature, alarmPriority, cancellationToken);
+
+        if (_modes.Replay)
+        {
+            await PostEnvelopeAsync(envelope, message, temperature, alarmPriority, cancellationToken, replayed: true);
+        }
+    }
+
+    private async Task PostEnvelopeAsync(
+        SecureEnvelope envelope,
+        SensorMessage message,
+        double temperature,
+        AlarmPriority alarmPriority,
+        CancellationToken cancellationToken,
+        bool replayed = false)
+    {
+        var prefix = replayed
+            ? $"[{_sensor.Id}] Replayed reading #{message.MessageId}"
+            : $"[{_sensor.Id}] Sent reading #{message.MessageId}";
+
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("/api/readings", message, cancellationToken);
+            var response = await _httpClient.PostAsJsonAsync("/api/readings", envelope, cancellationToken);
+            var statusCode = (int)response.StatusCode;
             if (response.IsSuccessStatusCode)
             {
-                WriteLine(
-                    $"[{_sensor.Id}] Sent reading #{message.MessageId}: {temperature:F2}°C - OK ({(int)response.StatusCode})",
-                    alarmPriority);
+                WriteLine($"{prefix}: {temperature:F2}°C - OK ({statusCode})", alarmPriority);
+                return;
             }
             else
             {
+                var reason = statusCode switch
+                {
+                    401 => "REJECTED: invalid signature",
+                    409 => "REJECTED: replay/blocked",
+                    429 => "REJECTED: rate limited",
+                    _ => "FAILED"
+                };
                 var body = await response.Content.ReadAsStringAsync(cancellationToken);
-                WriteLine(
-                    $"[{_sensor.Id}] Sent reading #{message.MessageId}: {temperature:F2}°C - FAILED ({(int)response.StatusCode}) {body}",
-                    alarmPriority);
+                WriteLine($"{prefix}: {temperature:F2}°C - {reason} ({statusCode}) {body}", alarmPriority);
             }
+        
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            WriteLine(
-                $"[{_sensor.Id}] Sent reading #{message.MessageId}: {temperature:F2}°C - ERROR: {ex.Message}",
-                alarmPriority);
+            WriteLine($"{prefix}: {temperature:F2}°C - ERROR: {ex.Message}", alarmPriority);
         }
+    }
+
+    private static SecureEnvelope CorruptSignature(SecureEnvelope envelope)
+    {
+        var signature = Convert.FromBase64String(envelope.Signature);
+        signature[0] ^= 0xFF;
+        return envelope with { Signature = Convert.ToBase64String(signature) };
     }
 
     private double GenerateTemperature()
     {
         // A malicious sensor consistently reports near its maximum, producing a
         // clean statistical outlier the consensus service should detect.
-        if (_malicious)
+        if (_modes.Malicious)
         {
             return _sensor.TemperatureMax - 0.5;
         }

@@ -12,7 +12,8 @@ public enum IngestionStatus
     Accepted,
     NotFound,
     BadRequest,
-    Conflict
+    Conflict,
+    Replay
 }
 
 public sealed record IngestionResult(IngestionStatus Status, string? Detail = null);

@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using SensorMonitoring.Contracts;
 using SensorMonitoring.Data;
 using SensorMonitoring.Data.Entities;
+using SensorMonitoring.Security;
 
 namespace IngestionService.Services;
 
@@ -9,11 +11,13 @@ public sealed class ReadingIngestionService : IReadingIngestionService
 {
     private readonly SensorDbContext _dbContext;
     private readonly ILogger<ReadingIngestionService> _logger;
+    private readonly SecurityOptions _securityOptions;
 
-    public ReadingIngestionService(SensorDbContext dbContext, ILogger<ReadingIngestionService> logger)
+    public ReadingIngestionService(SensorDbContext dbContext, ILogger<ReadingIngestionService> logger, IOptions<SecurityOptions> securityOptions)
     {
         _dbContext = dbContext;
         _logger = logger;
+        _securityOptions = securityOptions.Value;
     }
 
     public async Task<IngestionResult> IngestAsync(SensorMessage message, CancellationToken cancellationToken = default)
@@ -42,6 +46,27 @@ public sealed class ReadingIngestionService : IReadingIngestionService
             return new IngestionResult(
                 IngestionStatus.Conflict,
                 $"Sensor '{message.SensorId}' is blocked until {blockedUntil:O}.");
+        }
+
+        var skewSeconds = Math.Abs((utcNow - message.Timestamp).TotalSeconds);
+        if (skewSeconds > _securityOptions.TimestampToleranceSeconds)
+        {
+            _logger.LogWarning(
+                "Rejected stale message #{MessageId} from {SensorId}: timestamp {Timestamp:O} is {Skew:F0}s from server time",
+                message.MessageId, message.SensorId, message.Timestamp, skewSeconds);
+            return new IngestionResult(
+                IngestionStatus.Replay,
+                $"Message timestamp {message.Timestamp:O} is outside the allowed {_securityOptions.TimestampToleranceSeconds}s window.");
+        }
+
+        if (message.MessageId <= sensor.LastMessageId)
+        {
+            _logger.LogWarning(
+                "Rejected replayed message #{MessageId} from {SensorId}: last accepted ID is {LastMessageId}",
+                message.MessageId, message.SensorId, sensor.LastMessageId);
+            return new IngestionResult(
+                IngestionStatus.Replay,
+                $"MessageId {message.MessageId} already seen; last accepted ID is {sensor.LastMessageId}.");
         }
 
         if (message.TemperatureValue < sensor.TemperatureMin || message.TemperatureValue > sensor.TemperatureMax)

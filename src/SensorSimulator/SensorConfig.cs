@@ -5,6 +5,8 @@ namespace SensorSimulator;
 public sealed class SimulatorOptions
 {
     public string IngestionBaseUrl { get; set; } = "http://localhost:5001";
+    public string ServerPublicKeyPath { get; set; } = "keys/client/server_rsa_public.pem";
+    public string SensorPrivateKeysDirectory { get; set; } = "keys/client/sensors";
 }
 
 public sealed record SensorMetadata(
@@ -33,3 +35,9 @@ public static class SensorConfig
     public static bool TryGetSensor(string sensorId, out SensorMetadata metadata) =>
         Sensors.TryGetValue(sensorId, out metadata!);
 }
+
+public sealed record SimulatorModes(
+    bool Malicious = false,
+    bool BadSignature = false,
+    bool Replay = false,
+    bool Flood = false);
