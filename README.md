@@ -9,6 +9,7 @@ This project implements a fault-tolerant sensor data ingestion pipeline with con
 
 | Service / Library              | Description                                                        |
 | ------------------------------ | ------------------------------------------------------------------ |
+| **GatewayService**             | YARP reverse proxy / ingress: single public entry point routing `/api/ingest` and `/hub` |
 | **IngestionService**           | Receives sensor readings via REST API, fault-tolerance pool worker |
 | **SensorSimulator**            | Console client that simulates sensor readings and client-side alarms |
 | **ConsensusService**           | Background worker: per-minute consensus calculation and malicious-sensor (BFT) detection |
@@ -364,6 +365,40 @@ Note: replay protection compares message timestamps with the server clock
 (±30 s tolerance), so both machines should have correct time (NTP — the
 Windows default — is sufficient).
 
+## Phase 5: Ingress / API gateway
+
+The **GatewayService** is a [YARP](https://microsoft.github.io/reverse-proxy/)
+reverse proxy that fronts the system as a single public entry point, so clients
+no longer talk to each service's port directly. Routing is path-based and
+config-driven (`src/GatewayService/appsettings.json`):
+
+| Public route | Forwarded to | Notes |
+| ------------ | ------------ | ----- |
+| `/api/ingest/**` | IngestionService | The `/api/ingest` prefix is rewritten to `/api`, so `/api/ingest/readings` → `/api/readings` and `/api/ingest/sensors/{id}/block` → `/api/sensors/{id}/block` |
+| `/hub/**` | NotificationService | SignalR hub (`/hub/alarms`); YARP forwards the WebSocket upgrade transparently |
+| `/health` | — | The gateway's own health check → `200 OK` |
+
+`/api/reports` is intentionally **not** routed — there is no reporting service in
+this project.
+
+### Running
+
+In Docker Compose the gateway runs as the `gateway` service and is the only
+service that needs to be published. It depends on `ingestion-service` and
+`notification-service`:
+
+```bash
+docker compose up --build
+```
+
+```powershell
+# Gateway health (PowerShell)
+(Invoke-WebRequest -Uri http://localhost:8080/health -UseBasicParsing).StatusCode   # → 200
+```
+
+Requests then flow through the gateway, e.g. `http://localhost:8080/api/ingest/readings`
+reaches IngestionService and `ws://localhost:8080/hub/alarms` reaches the SignalR hub.
+
 ## Database
 
 PostgreSQL 16 runs in Docker with these defaults:
@@ -414,6 +449,7 @@ dotnet ef migrations add <MigrationName> --project src/SensorMonitoring.Data --s
 | Service             | Host port                                      | Health check  |
 | ------------------- | ---------------------------------------------- | ------------- |
 | PostgreSQL          | 5432                                           | —             |
+| GatewayService      | [http://localhost:8080](http://localhost:8080) | `GET /health` |
 | IngestionService    | [http://localhost:5001](http://localhost:5001) | `GET /health` |
 | NotificationService | [http://localhost:5003](http://localhost:5003) | `GET /health` |
 | ConsensusService    | — (background worker, no public port)          | —             |
